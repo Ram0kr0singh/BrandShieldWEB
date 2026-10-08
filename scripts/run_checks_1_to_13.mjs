@@ -14,6 +14,7 @@ const chrome = spawn(chromePath, [
   "--remote-debugging-port=9222",
   "--no-sandbox",
   "--disable-gpu",
+  "--disable-extensions",
   `--user-data-dir=${userDataDir}`,
   "http://127.0.0.1:5173/"
 ]);
@@ -27,7 +28,7 @@ async function main() {
   try {
     const listRes = await fetch("http://127.0.0.1:9222/json/list");
     const pages = await listRes.json();
-    const page = pages.find(p => p.url.includes("5173")) || pages[0];
+    const page = pages.find(p => p.type === "page" && p.url.includes("5173")) || pages.find(p => p.type === "page") || pages[0];
     ws = new WebSocket(page.webSocketDebuggerUrl);
 
     let id = 1;

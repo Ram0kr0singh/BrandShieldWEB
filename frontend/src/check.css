@@ -1,33 +1,233 @@
-.check-fields{grid-template-columns:minmax(150px,1fr) minmax(220px,1.6fr) auto auto}
-.check-fields>button{min-height:39px;white-space:nowrap}
-.check-fields>button:disabled,.preset-grid button:disabled{opacity:.6;cursor:wait}
-.batch-summary{font-weight:700;margin:4px 0 12px}
-.batch-summary.pass,.check-pass{color:#81dcba}
-.batch-summary.fail,.check-fail{color:#ffad9a}
-.batch-table-wrap{padding:0;max-height:580px;overflow:auto}
-.batch-table-wrap table{min-width:800px}
-.batch-table-wrap th{position:sticky;top:0;background:#101b2d;z-index:1}
-.batch-row:hover{background:#16253a}
-.batch-row td:nth-child(5){max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.check-pass,.check-fail{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;white-space:nowrap}
-.codepoint-note{padding:10px 12px;background:#24203a;border-left:3px solid #b093ff;border-radius:5px;color:#ded3ff;font-size:13px}
-.recent-checks{background:#101b2d;border:1px solid #253650;border-radius:10px;padding:18px;margin-top:18px}
-.recent-checks h2{margin-bottom:12px}
-.recent-checks ul{list-style:none;padding:0;margin:0;display:grid;gap:7px}
-.recent-checks li button{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px;background:#0d1727}
-.recent-checks li button>span:first-child{display:grid;gap:4px;min-width:0}
-.recent-checks li button strong{overflow-wrap:anywhere}
-.recent-checks small{color:#9eb1ca}
-.preset-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid #40536d;transition:background .15s,border-color .15s,color .15s}
-.preset-toggle.selected{color:#c8f6e5;background:#14372f;border-color:#2c9477;box-shadow:inset 0 0 0 1px #2c947733}
-.preset-toggle.unselected{color:#91a1b7;background:#0b1421;border-color:#29384c;opacity:.7}
-.preset-toggle.unselected:hover{opacity:1;border-color:#536984}
-.preset-state{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;font-size:11px;font-weight:900;line-height:1}
-.preset-toggle.selected .preset-state{color:#0d211b;background:#62d6ad}
-.preset-toggle.unselected .preset-state{color:#a9b7c9;background:#26364b}
-.preset-selection-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 18px;color:#9eb1ca;font-size:12px}
-.preset-selection-tools span{margin-right:auto}
-.preset-selection-tools button{padding:6px 9px;font-size:11px}
-.preset-selection-tools button:disabled{opacity:.5;cursor:not-allowed}
-@media(max-width:850px){.check-fields{grid-template-columns:1fr 1fr}.check-fields>button{width:100%}}
-@media(max-width:650px){.check-fields{grid-template-columns:1fr}.batch-table-wrap table{min-width:760px}.recent-checks li button{align-items:flex-start}}
+.check-fields {
+  grid-template-columns: minmax(150px, 1fr) minmax(220px, 1.6fr) auto auto;
+}
+
+.check-fields > button {
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.check-fields > button:disabled,
+.preset-grid button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.batch-summary {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 6px 0 14px;
+}
+
+.batch-summary.pass, .check-pass {
+  color: var(--accent-legitimate);
+}
+
+.batch-summary.fail, .check-fail {
+  color: var(--accent-critical);
+}
+
+.batch-table-wrap {
+  padding: 0;
+  max-height: 580px;
+  overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-surface);
+}
+
+.batch-table-wrap table {
+  min-width: 800px;
+}
+
+.batch-table-wrap th {
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-elevated);
+  z-index: 1;
+}
+
+.batch-row:hover {
+  background-color: var(--bg-raised);
+}
+
+.batch-row td:nth-child(5) {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check-pass, .check-fail {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.codepoint-note {
+  padding: 10px 14px;
+  background-color: rgba(134, 184, 164, 0.08);
+  border-left: 3px solid var(--accent-legitimate);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.recent-checks {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  margin-top: 18px;
+}
+
+.recent-checks h2 {
+  margin-bottom: 12px;
+}
+
+.recent-checks ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.recent-checks li button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  gap: 12px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  padding: 10px 14px;
+}
+
+.recent-checks li button:hover {
+  background-color: var(--bg-raised);
+  border-color: var(--border-default);
+}
+
+.recent-checks li button > span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.recent-checks li button strong {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+}
+
+.recent-checks small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.preset-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.preset-toggle.selected {
+  color: var(--text-primary);
+  background-color: rgba(134, 184, 164, 0.15);
+  border-color: var(--accent-legitimate);
+  box-shadow: inset 0 0 0 1px rgba(134, 184, 164, 0.2);
+}
+
+.preset-toggle.unselected {
+  color: var(--text-secondary);
+  background-color: var(--bg-elevated);
+  border-color: var(--border-subtle);
+  opacity: 0.8;
+}
+
+.preset-toggle.unselected:hover {
+  opacity: 1;
+  border-color: var(--border-strong);
+  background-color: var(--bg-raised);
+}
+
+.preset-state {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.preset-toggle.selected .preset-state {
+  color: #060607;
+  background-color: var(--accent-legitimate);
+}
+
+.preset-toggle.unselected .preset-state {
+  color: var(--text-muted);
+  background-color: var(--bg-raised);
+}
+
+.preset-selection-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0 18px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.preset-selection-tools span {
+  margin-right: auto;
+}
+
+.preset-selection-tools button {
+  padding: 5px 9px;
+  font-size: 11px;
+}
+
+.preset-selection-tools button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 850px) {
+  .check-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+  .check-fields > button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 650px) {
+  .check-fields {
+    grid-template-columns: 1fr;
+  }
+  .batch-table-wrap table {
+    min-width: 760px;
+  }
+  .recent-checks li button {
+    align-items: flex-start;
+  }
+}
