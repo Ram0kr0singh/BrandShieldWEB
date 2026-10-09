@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 
 interface NavItem {
   to: string;
@@ -20,26 +20,28 @@ const navItems: NavItem[] = [
 export default function AppSidebar() {
   return (
     <aside className="aegis-spine" aria-label="Main navigation">
-      <div className="spine-brand">
-        <div className="spine-brand-mark">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            className="spine-radar-icon"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="9" stroke="currentColor" opacity="0.35" />
-            <circle cx="12" cy="12" r="5" stroke="currentColor" opacity="0.75" />
-            <circle cx="12" cy="12" r="2" fill="currentColor" />
-          </svg>
-          <span className="spine-wordmark">AEGIS</span>
+      <Link to="/" className="spine-brand-link" aria-label="Go to overview">
+        <div className="spine-brand">
+          <div className="spine-brand-mark">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              className="spine-radar-icon"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9" stroke="currentColor" opacity="0.35" />
+              <circle cx="12" cy="12" r="5" stroke="currentColor" opacity="0.75" />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+            </svg>
+            <span className="spine-wordmark">AEGIS</span>
+          </div>
+          <p className="spine-subtitle">BrandShield</p>
         </div>
-        <p className="spine-subtitle">BrandShield</p>
-      </div>
+      </Link>
 
       <nav className="spine-nav" aria-label="Primary navigation">
         <div className="spine-hairline" aria-hidden="true" />

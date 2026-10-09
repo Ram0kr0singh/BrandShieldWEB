@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { ApiError, api, type AppInput, type AssetInput, type Brand, type BrandAsset, type BrandInput, type OfficialApp, type OfficialSocial, type SocialInput } from "./api";
+import BrandLogo from "./BrandLogo";
 
 type BrandForm = Omit<BrandInput, "slug">;
 type Pending<T> = { key: string; value: T };
@@ -398,8 +399,8 @@ export default function BrandProfileEditor() {
   if (loading && !profile && !creating) return <div className="loader">Loading protected identity...</div>;
   return <div className="brand-profile-page">
     <header>
-      <div><p className="eyebrow">PROTECTED IDENTITY</p><h1>{creating ? "Set up your brand" : profile?.name ?? "Brand profile"}</h1>
-        <p>Define verified identity details used as the legitimate baseline for monitoring.</p></div>
+      <div><p className="eyebrow">02 · PROTECTED BRANDS</p><h1>Identity Registry</h1>
+        <p>The verified identities against which all threat comparisons are made.</p></div>
       <div className="profile-actions">
         {brands.length > 0 && <label>Protected brand<select value={creating ? "" : brandId} onChange={event => {
           const selected = event.target.value;
@@ -410,6 +411,7 @@ export default function BrandProfileEditor() {
           setScanMessage("");
           void load(selected, true);
         }}>{brands.map(brand => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select></label>}
+        {!creating && brandId && (() => { const cb = brands.find(b => b.id === brandId); return cb ? <BrandLogo brand={cb} name={cb.name} domain={cb.official_domain} logoUrl={cb.logo_url} size={32} /> : null; })()}
         <button type="button" onClick={startNewBrand}><Plus size={16}/>New brand</button>
       </div>
     </header>
@@ -420,7 +422,12 @@ export default function BrandProfileEditor() {
       <div className="setup-heading"><div><h2>{creating ? "Set up brand" : "Edit brand details"}</h2><p>Domain must be a hostname only. URLs must begin with http:// or https://.</p></div>
         <button className="primary" type="button" onClick={save} disabled={busy || (loading && !creating)}><ShieldCheck size={16}/>{busy ? "Saving..." : creating ? "Create brand and save records" : "Save profile"}</button></div>
       <div className="setup-fields">
-        <Field label="Brand / organization name" value={form.name} onChange={value => updateForm("name", value)} error={errors.name} placeholder="Example Organization"/>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <BrandLogo brand={form} name={form.name} domain={form.official_domain} logoUrl={form.logo_url} size={46} />
+          <div style={{ flex: 1 }}>
+            <Field label="Brand / organization name" value={form.name} onChange={value => updateForm("name", value)} error={errors.name} placeholder="Example Organization"/>
+          </div>
+        </div>
         <Field label="Official domain" value={form.official_domain ?? ""} onChange={value => updateForm("official_domain", value)} error={errors.official_domain} placeholder="example.com"/>
         <div className="profile-field"><Field label="Logo URL" value={form.logo_url ?? ""} onChange={value => updateForm("logo_url", value)} error={errors.logo_url} placeholder="/static/logos/brand-logo.png"/>
           {!creating && <label className="logo-upload">Upload local PNG/JPEG<input type="file" accept="image/png,image/jpeg" onChange={event => { void uploadLogo(event.target.files?.[0]); event.currentTarget.value = ""; }} disabled={busy}/></label>}</div>

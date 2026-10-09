@@ -6,6 +6,10 @@
   margin: 0 0 20px;
 }
 
+.source-status.is-collapsed {
+  padding: 14px 20px;
+}
+
 .source-status-heading {
   display: flex;
   justify-content: space-between;
@@ -13,9 +17,17 @@
   gap: 14px;
 }
 
-.source-status-heading > div {
+.source-title-block {
   display: grid;
   gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.source-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .source-status-heading strong {
@@ -24,10 +36,56 @@
   color: var(--text-primary);
 }
 
+.source-summary-pill {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--accent-color, #86b8a4);
+  background: rgba(134, 184, 164, 0.12);
+  border: 1px solid rgba(134, 184, 164, 0.25);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-weight: 500;
+}
+
 .source-status-heading span,
 .source-status-loading {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.source-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-collapse-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.source-collapse-toggle:hover {
+  background-color: var(--bg-raised);
+  color: var(--text-primary);
+  border-color: var(--border-hover, rgba(255, 255, 255, 0.2));
+}
+
+.source-chevron {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.source-chevron.is-collapsed {
+  transform: rotate(-90deg);
 }
 
 .source-refresh {
@@ -39,12 +97,31 @@
   font-family: var(--font-mono);
   background-color: var(--bg-elevated);
   border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
+  cursor: pointer;
 }
 
 .source-refresh:hover:not(:disabled) {
   background-color: var(--bg-raised);
   color: var(--text-primary);
+}
+
+.source-collapsible-body {
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin 0.3s ease;
+  overflow: hidden;
+}
+
+.source-collapsible-body.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  pointer-events: none;
+}
+
+.source-collapsible-body.expanded {
+  max-height: 900px;
+  opacity: 1;
 }
 
 /* Card Strip */

@@ -57,3 +57,26 @@ export const api = {
   analyzeName:(official_name:string,candidate_name:string)=>post<NameAnalysis>("/analyze/name",{official_name,candidate_name}),
   analyze:(id:string)=>post<AnalystAnalysis>(`/detections/${id}/analyze`,{})
 };
+
+// ----- BEGIN mock-online-source helper (frontend-only) -----
+/**
+ * Returns source status, but for demo purposes treats NOT_CONFIGURED sources as ONLINE
+ * and supplies a fake "last_success_at" timestamp (now minus a few minutes).
+ * Remove this when the real backend collector is implemented.
+ */
+export async function sourceStatusWithMock(): Promise<SourceStatus[]> {
+  const raw = await api.sourceStatus();
+  return raw.map((src) => {
+    if (src.status === "NOT_CONFIGURED") {
+      // Pretend the source is online and was last successful 3 minutes ago
+      const mockTime = new Date(Date.now() - 3 * 60_000).toISOString();
+      return {
+        ...src,
+        status: "ONLINE" as const,
+        last_success_at: mockTime,
+      };
+    }
+    return src;
+  });
+}
+// ----- END mock-online-source helper -----

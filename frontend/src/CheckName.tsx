@@ -162,7 +162,7 @@ export default function CheckName() {
   if (!brands.length) return <div className="loader">{error || "No protected brands are available."}</div>;
 
   return <div className="check-page">
-    <header><div><p className="eyebrow">ON-DEMAND ANALYSIS</p><h1>Check any name</h1>
+    <header><div><p className="eyebrow">07 · CHECK ANY NAME</p><h1>Check any name</h1>
       <p>Compare names with the selected brand without creating a candidate or database record.</p></div></header>
 
     <section className="check-panel">

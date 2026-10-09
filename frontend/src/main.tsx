@@ -1,4 +1,4 @@
-import { Component, useCallback, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, AppWindow, Eye, Radar, RefreshCw, ShieldCheck, Users } from "lucide-react";
@@ -9,6 +9,7 @@ import CheckName from "./CheckName";
 import SourceStatus, { SourceStatusNotice } from "./SourceStatus";
 import AppSidebar from "./AppSidebar";
 import PerimeterVisualization from "./PerimeterVisualization";
+import BrandLogo from "./BrandLogo";
 import "./styles.css";
 import "./check.css";
 const colors:Record<string,string>={CRITICAL:"#e4574a",HIGH:"#e4574a",MEDIUM:"#d9ae5f",LOW:"#79a6d2",SAFE:"#86b8a4"};
@@ -51,46 +52,101 @@ function timeAgo(dateStr: string): string {
 }
 function OverviewPage(){
   const [brands,setBrands]=useState<Brand[]>([]),[id,setId]=useState(""),[data,setData]=useState<Overview|null>(null),[detections,setDetections]=useState<Detection[]>([]),[error,setError]=useState(""),[busy,setBusy]=useState(false),[scanWarnings,setScanWarnings]=useState<import("./api").SourceWarning[]>([]),nav=useNavigate();
+  const [sourceOpen, setSourceOpen] = useState(false);
+
+  /** Aggregate multiple overviews into a single combined Overview for "All Brands" mode */
+  const aggregateOverviews = (ovs: Overview[]): Overview => {
+    const totals = ovs.reduce((acc, o) => ({
+      detected_threats: acc.detected_threats + (o.summary.detected_threats ?? 0),
+      high_risk:        acc.high_risk        + (o.summary.high_risk        ?? 0),
+      lookalikes:       acc.lookalikes       + (o.summary.lookalikes       ?? 0),
+      total_candidates: acc.total_candidates + (o.summary.total_candidates ?? 0),
+    }), { detected_threats:0, high_risk:0, lookalikes:0, total_candidates:0 });
+
+    // Merge source distributions
+    const srcMap: Record<string,number> = {};
+    for (const o of ovs) {
+      if (Array.isArray(o.source_distribution)) {
+        for (const s of o.source_distribution) srcMap[s.source] = (srcMap[s.source]??0) + s.count;
+      }
+    }
+    const source_distribution = Object.entries(srcMap).map(([source,count]) => ({ source, count }));
+
+    // Latest scan across all brands
+    const scans = ovs.map(o => o.last_scan).filter(Boolean) as {completed_at:string|null;candidate_count:number}[];
+    const totalCandidatesAnalyzed = scans.reduce((sum, s) => sum + (s.candidate_count ?? 0), 0);
+    const latestCompletedAt = scans.sort((a,b) => new Date(b.completed_at??0).getTime() - new Date(a.completed_at??0).getTime())[0]?.completed_at ?? null;
+    const last_scan = latestCompletedAt ? { completed_at: latestCompletedAt, candidate_count: totalCandidatesAnalyzed } : null;
+
+    const recent_threats = ovs.flatMap(o => o.recent_threats ?? []).sort((a,b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime());
+
+    return {
+      brand: { id: "", name: "All Brands" },
+      summary: totals,
+      risk_distribution: [],
+      source_distribution,
+      threat_type_distribution: [],
+      recent_threats,
+      last_scan
+    };
+  };
+
   const load=useCallback(async(x:string)=>{
     setError("");
     setData(null);
     try{
-      const [ov, dets] = await Promise.all([api.overview(x), api.detections().catch(() => [])]);
-      setData(ov);
-      setDetections(dets);
+      if(x === ""){
+        // All Brands: aggregate every brand's overview + show all detections
+        const [allBrands, dets] = await Promise.all([api.brands(), api.detections().catch(()=>[])]);
+        const ovResults = await Promise.allSettled(allBrands.map(b => api.overview(b.id)));
+        const validOvs = ovResults.filter((r): r is PromiseFulfilledResult<Overview> => r.status==="fulfilled").map(r => r.value);
+        if(validOvs.length > 0) setData(aggregateOverviews(validOvs));
+        setDetections(dets);
+      } else {
+        const [ov, dets] = await Promise.all([api.overview(x), api.detections().catch(() => [])]);
+        setData(ov);
+        setDetections(dets.filter(d => !d.brand_id || d.brand_id === x));
+      }
     }catch{
       setError("Unable to load dashboard data.");
     }
   },[]);
+
   const init=useCallback(async()=>{
     setError("");
     try{
       const b=await api.brands();
       setBrands(b);
-      const initial=b.find(item=>item.name.toLowerCase()==="nike")??b[0];
-      if(initial){
-        setId(initial.id);
-        setData(null);
-        try{
-          const [ov, dets] = await Promise.all([api.overview(initial.id), api.detections().catch(() => [])]);
-          setData(ov);
-          setDetections(dets);
-        }catch{
-          setError("Unable to load dashboard data.");
-        }
-      }
+      setId(""); // Default: All Brands
+      await load("");
     }catch{
       setError("Unable to load protected brands.");
     }
-  },[]);
+  },[load]);
+
   useEffect(()=>{void init()},[init]);
   const scan=async()=>{
     setBusy(true);
     setScanWarnings([]);
     try{
-      const result=await api.scan(id);
-      setScanWarnings(Array.isArray(result?.source_warnings)?result.source_warnings:[]);
-      await load(id);
+      if(!id){
+        // Scan all brands
+        const allWarnings: import("./api").SourceWarning[] = [];
+        for(const b of brands){
+          try{
+            const result=await api.scan(b.id);
+            if(Array.isArray(result?.source_warnings)){
+              allWarnings.push(...result.source_warnings);
+            }
+          }catch{}
+        }
+        setScanWarnings(allWarnings);
+        await load("");
+      } else {
+        const result=await api.scan(id);
+        setScanWarnings(Array.isArray(result?.source_warnings)?result.source_warnings:[]);
+        await load(id);
+      }
     }catch{
       setError("Scan could not be completed.");
     }finally{
@@ -100,22 +156,26 @@ function OverviewPage(){
   if(error)return <Loading>{error} <button type="button" onClick={()=> (id && brands.length ? load(id) : init())}>Retry</button></Loading>;
   if(!data)return <Loading>Loading dashboard...</Loading>;
 
-  const currentBrand = brands.find(b=>b.id===id) || data.brand;
-  const brandName = currentBrand?.name || "Protected Brand";
+  const isAllBrands = !id;
+  const currentBrand = brands.find(b=>b.id===id);
+  const brandName = isAllBrands ? "All Brands" : (currentBrand?.name || data.brand?.name || "Protected Brand");
   const metrics=[["Detected threats",data.summary.detected_threats,AlertTriangle],["High risk",data.summary.high_risk,AlertTriangle],["Look-alikes",data.summary.lookalikes,Radar],["Candidates monitored",data.summary.total_candidates,Users]];
 
   const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   const socialDist = data.source_distribution.find(s=>s.source==="Social Media")?.count ?? 0;
   const appDist = data.source_distribution.find(s=>s.source==="App Store")?.count ?? 0;
-  const maxSource = Math.max(socialDist, appDist, 1);
-  const socialPct = Math.round((socialDist / maxSource) * 100);
-  const appPct = Math.round((appDist / maxSource) * 100);
 
   const socialDets = detections.filter(d=>d.candidate.source==="Social Media");
   const appDets = detections.filter(d=>d.candidate.source==="App Store");
   const socialCrit = socialDets.filter(d=>d.severity==="CRITICAL"||d.severity==="HIGH").length;
   const appCrit = appDets.filter(d=>d.severity==="CRITICAL"||d.severity==="HIGH").length;
+
+  const socialCount = socialDets.length > 0 ? socialDets.length : socialDist;
+  const appCount    = appDets.length    > 0 ? appDets.length    : appDist;
+  const maxSource   = Math.max(socialCount, appCount, 1);
+  const socialPct   = Math.round((socialCount / maxSource) * 100);
+  const appPct      = Math.round((appCount    / maxSource) * 100);
 
   const snapshotRows = [
     { label: "Social Media", icon: "SM", total: socialDets.length || socialDist, critical: socialCrit },
@@ -129,6 +189,9 @@ function OverviewPage(){
       <div>
         <div className="overview-eyebrow-active">
           <span className="pulse-dot" aria-hidden="true" />
+          {!isAllBrands && currentBrand && (
+            <BrandLogo brand={currentBrand} name={currentBrand.name} domain={currentBrand.official_domain} logoUrl={currentBrand.logo_url} size={22} />
+          )}
           <span>PROTECTION ACTIVE · {brandName.toUpperCase()}</span>
         </div>
         <h1>Digital Perimeter Briefing</h1>
@@ -137,6 +200,7 @@ function OverviewPage(){
       <div className="actions">
         <label>Protected brand
           <select value={id} onChange={e=>{setId(e.target.value);setScanWarnings([]);load(e.target.value)}}>
+            <option value="">All Brands</option>
             {brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </label>
@@ -146,6 +210,12 @@ function OverviewPage(){
         </button>
       </div>
     </header>
+
+    {/* QA Selectors: Source status strip, scan warnings */}
+    <SourceStatus showControls/>
+    {scanWarnings.length>0&&<div className="scan-source-warning" role="status">Scan completed using stored observations. Degraded sources: {scanWarnings.map(source=>source.name).join(", ")}.</div>}
+    <div className="scanline">{data.last_scan?`Last scan completed ${data.last_scan.completed_at?new Date(data.last_scan.completed_at).toLocaleString():"recently"} · ${data.last_scan.candidate_count} candidates analyzed`:"No monitoring run recorded yet. Run a scan to establish the latest monitoring snapshot."}</div>
+    <section className="metrics">{metrics.map(([label,value,Icon])=>{const I=Icon as typeof AlertTriangle;return <article className="metric" key={label as string}><I/><span>{label as string}</span><strong>{value as number}</strong></article>})}</section>
 
     {/* Upper Section (55% / 45%) */}
     <div className="overview-top-grid">
@@ -164,8 +234,8 @@ function OverviewPage(){
         <div className="source-bars">
           <div className="source-bar-item">
             <div className="source-bar-header">
-              <span>Social Platforms</span>
-              <span>{socialDist}</span>
+              <span>Social Media</span>
+              <span>{socialCount}</span>
             </div>
             <div className="source-bar-track">
               <div className="source-bar-fill social" style={{ width: `${socialPct}%` }} />
@@ -173,8 +243,8 @@ function OverviewPage(){
           </div>
           <div className="source-bar-item">
             <div className="source-bar-header">
-              <span>App Stores</span>
-              <span>{appDist}</span>
+              <span>App Store</span>
+              <span>{appCount}</span>
             </div>
             <div className="source-bar-track">
               <div className="source-bar-fill apps" style={{ width: `${appPct}%` }} />
@@ -245,11 +315,6 @@ function OverviewPage(){
       </div>
     </div>
 
-    {/* QA Selectors: Source status strip, scan warnings, scanline, metrics */}
-    <SourceStatus showControls/>
-    {scanWarnings.length>0&&<div className="scan-source-warning" role="status">Scan completed using stored observations. Degraded sources: {scanWarnings.map(source=>source.name).join(", ")}.</div>}
-    <div className="scanline">{data.last_scan?`Last scan completed ${data.last_scan.completed_at?new Date(data.last_scan.completed_at).toLocaleString():"recently"} · ${data.last_scan.candidate_count} candidates analyzed`:"No monitoring run recorded yet. Run a scan to establish the latest monitoring snapshot."}</div>
-    <section className="metrics">{metrics.map(([label,value,Icon])=>{const I=Icon as typeof AlertTriangle;return <article className="metric" key={label as string}><I/><span>{label as string}</span><strong>{value as number}</strong></article>})}</section>
     <Table items={data.recent_threats} open={x=>nav(`/threats/${x}`)}/>
   </>;
 }
@@ -315,7 +380,7 @@ function List({ mode }: { mode: string }) {
       <header>
         <div>
           <p className="eyebrow">
-            {mode === "social" ? "MONITORING · SOCIAL MEDIA" : mode === "apps" ? "MONITORING · APP STORES" : mode === "look" ? "MONITORING · LOOK-ALIKE DETECTION" : "MONITORING · THREAT INVENTORY"}
+            {mode === "social" ? "03 · SOCIAL MEDIA" : mode === "apps" ? "04 · APP STORES" : mode === "look" ? "06 · LOOK-ALIKE DETECTION" : "05 · THREATS"}
           </p>
           <h1>
             {mode === "social" ? "Social media monitoring" : mode === "apps" ? "App store monitoring" : mode === "look" ? "Look-alike detection" : "Threats"}
@@ -410,6 +475,7 @@ function Detail() {
   const [busy, setBusy] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState("");
+  const analysisRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -447,7 +513,14 @@ function Detail() {
     setAnalyzing(true);
     setError("");
     try {
-      setAnalysis(await api.analyze(d.id));
+      const result = await api.analyze(d.id);
+      setAnalysis(result);
+      // Scroll to the report after React renders it
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          analysisRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
     } catch {
       setError("AI Analyst could not generate an evidence-grounded explanation.");
     } finally {
@@ -477,6 +550,11 @@ function Detail() {
   const officialSub = isApp ? (matchedOfficialApp?.package_identifier || brand?.name || "App Store") : (brand?.name || "Verified Social");
   const officialInitial = (brand?.name || "B").charAt(0).toUpperCase();
   const suspectInitial = (d.candidate.name || "S").charAt(0).toUpperCase();
+
+  // Logo resolution from LOGO_SIMILARITY evidence
+  const logoEvidence = d.evidence.find(e => e.signal_type === "LOGO_SIMILARITY");
+  const officialLogoPath = (logoEvidence?.details as any)?.official_logo || brand?.logo_url || null;
+  const candidateLogoPath = (logoEvidence?.details as any)?.candidate_logo || (d.candidate as any)?.avatar_url || null;
 
   // Similarity Signals
   const simSignals = d.evidence.filter(e => e.available !== false);
@@ -537,7 +615,16 @@ function Detail() {
           <div className="specimen-col">
             <span className="specimen-type-label official">OFFICIAL IDENTITY</span>
             <div className="specimen-entity">
-              <div className="specimen-avatar official">{officialInitial}</div>
+              <div className="specimen-avatar official">
+                <BrandLogo
+                  brand={brand}
+                  name={brand?.name || officialName}
+                  domain={brand?.official_domain}
+                  logoUrl={officialLogoPath}
+                  fallbackInitial={officialInitial}
+                  size={44}
+                />
+              </div>
               <div className="specimen-details">
                 <div className="specimen-main-name">
                   <span>{officialName}</span>
@@ -555,7 +642,15 @@ function Detail() {
           <div className="specimen-col">
             <span className="specimen-type-label suspect">SUSPECT IDENTITY</span>
             <div className="specimen-entity">
-              <div className="specimen-avatar suspect">{suspectInitial}</div>
+              <div className="specimen-avatar suspect">
+                <BrandLogo
+                  name={d.candidate.name}
+                  logoUrl={candidateLogoPath}
+                  fallbackInitial={suspectInitial}
+                  isSuspect
+                  size={44}
+                />
+              </div>
               <div className="specimen-details">
                 <div className="specimen-main-name">
                   <span>{d.candidate.name}</span>
@@ -635,9 +730,63 @@ function Detail() {
         </div>
       </div>
 
-      {/* AI Analyst Explanation (when available) */}
+
+      {/* Analyst Action & Raw Evidence Lower Grid */}
+      <div className="detail-lower-grid">
+        {/* Left: Analyst Action */}
+        <div className="analyst-action-card">
+          <div className="card-section-title">ANALYST ACTIONS</div>
+          <div className="card-section-sub">Current investigation decision &amp; workflows</div>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 10px" }}>
+            Current status: <Badge v={inv.status} />
+          </p>
+          <div className="action-form-row">
+            <select
+              aria-label="Investigation status"
+              value={inv.status}
+              disabled={busy}
+              onChange={e => mutate(() => api.status(d.id, e.target.value))}
+            >
+              {statuses.map(x => <option key={x} value={x}>{x}</option>)}
+            </select>
+            <textarea
+              value={note}
+              maxLength={4000}
+              placeholder="Add an investigation note…"
+              onChange={e => setNote(e.target.value)}
+            />
+            <div className="action-buttons-row">
+              <button disabled={busy || !note.trim()} onClick={() => mutate(async () => { const r = await api.note(d.id, note); setNote(""); return r; })}>
+                Add note
+              </button>
+              <button className="primary" disabled={busy} onClick={() => mutate(async () => { await api.draft(d.id, draftType); return api.investigation(d.id); })}>
+                Generate {draftType.replaceAll("_", " ")} draft
+              </button>
+              <button className="analyst-button" disabled={analyzing} onClick={runAnalysis}>
+                {analyzing ? "Analyzing evidence…" : "AI Analyst"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Persisted Evidence Dossier */}
+        <div className="evidence-dossier-card">
+          <div className="card-section-title">EVIDENCE DOSSIER</div>
+          <div className="card-section-sub">Persisted detection signals &amp; raw details</div>
+          {d.evidence.map(e => (
+            <div className="evidence" key={e.signal_type}>
+              <strong>{e.signal_type.replaceAll("_", " ")}</strong>
+              <span>{e.available ? "Available" : "Unavailable"}</span>
+              <span>{e.score !== null && e.score !== undefined ? e.score.toFixed(2) : "—"}</span>
+              <p>{Object.entries(e.details).map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join(" · ")}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* AI Analyst Explanation — rendered BELOW Analyst Actions */}
       {analysis && (
-        <div className="analyst-assessment-card">
+        <div className="analyst-assessment-card" ref={analysisRef}>
           <div className="assessment-meta-row">
             <span className="eyebrow" style={{ margin: 0 }}>
               AI ANALYST · {analysis.provider.replaceAll("_", " ")} · {analysis.confidence} · {new Date(analysis.generated_at).toLocaleString()}
@@ -685,59 +834,6 @@ function Detail() {
           </div>
         </div>
       )}
-
-      {/* Analyst Action & Raw Evidence Lower Grid */}
-      <div className="detail-lower-grid">
-        {/* Left: Analyst Action */}
-        <div className="analyst-action-card">
-          <div className="card-section-title">ANALYST ACTIONS</div>
-          <div className="card-section-sub">Current investigation decision & workflows</div>
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 10px" }}>
-            Current status: <Badge v={inv.status} />
-          </p>
-          <div className="action-form-row">
-            <select
-              aria-label="Investigation status"
-              value={inv.status}
-              disabled={busy}
-              onChange={e => mutate(() => api.status(d.id, e.target.value))}
-            >
-              {statuses.map(x => <option key={x} value={x}>{x}</option>)}
-            </select>
-            <textarea
-              value={note}
-              maxLength={4000}
-              placeholder="Add an investigation note…"
-              onChange={e => setNote(e.target.value)}
-            />
-            <div className="action-buttons-row">
-              <button disabled={busy || !note.trim()} onClick={() => mutate(async () => { const r = await api.note(d.id, note); setNote(""); return r; })}>
-                Add note
-              </button>
-              <button className="primary" disabled={busy} onClick={() => mutate(async () => { await api.draft(d.id, draftType); return api.investigation(d.id); })}>
-                Generate {draftType.replaceAll("_", " ")} draft
-              </button>
-              <button className="analyst-button" disabled={analyzing} onClick={runAnalysis}>
-                {analyzing ? "Analyzing evidence…" : "AI Analyst"}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Persisted Evidence Dossier */}
-        <div className="evidence-dossier-card">
-          <div className="card-section-title">EVIDENCE DOSSIER</div>
-          <div className="card-section-sub">Persisted detection signals & raw details</div>
-          {d.evidence.map(e => (
-            <div className="evidence" key={e.signal_type}>
-              <strong>{e.signal_type.replaceAll("_", " ")}</strong>
-              <span>{e.available ? "Available" : "Unavailable"}</span>
-              <span>{e.score !== null && e.score !== undefined ? e.score.toFixed(2) : "—"}</span>
-              <p>{Object.entries(e.details).map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join(" · ")}</p>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Workspace Activity & Remediation Drafts */}
       <section className="workspace">

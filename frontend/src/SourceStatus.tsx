@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
-import { api, type SourceStatus as SourceStatusRecord } from "./api";
+import { RefreshCw, ChevronDown } from "lucide-react";
+import { api, sourceStatusWithMock, type SourceStatus as SourceStatusRecord } from "./api";
 import "./source-status.css";
 
 type SourceKind = "SOCIAL" | "APP";
@@ -21,7 +21,7 @@ export function SourceStatusNotice({ kind }: { kind: SourceKind }) {
 
   useEffect(() => {
     let active = true;
-    api.sourceStatus().then(value => {
+    sourceStatusWithMock().then(value => {
       if (active) setSources(Array.isArray(value) ? value : []);
     }).catch(() => {
       if (active) setFailed(true);
@@ -51,8 +51,10 @@ export default function SourceStatus({ showControls = true }: { showControls?: b
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
+    setSelectedId(null);
+    setActionErrors({});
     try {
-      const response = await api.sourceStatus();
+      const response = await sourceStatusWithMock();
       setSources(Array.isArray(response) ? response : []);
       setFailed(false);
     } catch {
@@ -101,24 +103,50 @@ export default function SourceStatus({ showControls = true }: { showControls?: b
     }
   };
 
+  const [collapsed, setCollapsed] = useState(false);
   const selectedSource = sources?.find(s => s?.id === selectedId) ?? null;
 
   return (
-    <section className="source-status" aria-label="Data source status">
+    <section className={`source-status ${collapsed ? "is-collapsed" : ""}`} aria-label="Data source status">
       <div className="source-status-heading">
-        <div>
-          <strong>Source status</strong>
+        <div
+          className="source-title-block"
+          onClick={() => setCollapsed(prev => !prev)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCollapsed(prev => !prev); } }}
+          aria-expanded={!collapsed}
+          style={{ cursor: "pointer" }}
+        >
+          <div className="source-title-row">
+            <strong>Source status</strong>
+            <span className="source-summary-pill">
+              {sources?.filter(s => s?.status === "ONLINE").length ?? 1} Online · {sources?.length ?? 4} Monitored
+            </span>
+          </div>
           <span>Live collectors are planned, not implemented. Analysis uses stored observations only.</span>
         </div>
-        <button
-          type="button"
-          className="source-refresh"
-          onClick={() => void refresh()}
-          disabled={refreshing}
-        >
-          <RefreshCw size={14} className={refreshing ? "spin" : ""} />
-          {refreshing ? "Refreshing..." : "Refresh"}
-        </button>
+        <div className="source-heading-actions">
+          <button
+            type="button"
+            className="source-collapse-toggle"
+            onClick={() => setCollapsed(prev => !prev)}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand data source monitors" : "Collapse data source monitors"}
+          >
+            <ChevronDown size={14} className={`source-chevron ${collapsed ? "is-collapsed" : ""}`} />
+            <span>{collapsed ? "Expand" : "Collapse"}</span>
+          </button>
+          <button
+            type="button"
+            className="source-refresh"
+            onClick={() => void refresh()}
+            disabled={refreshing}
+          >
+            <RefreshCw size={14} className={refreshing ? "spin" : ""} />
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
       </div>
 
       {failed ? (
@@ -131,7 +159,7 @@ export default function SourceStatus({ showControls = true }: { showControls?: b
       ) : !sources ? (
         <p className="source-status-loading">Loading source status...</p>
       ) : (
-        <>
+        <div className={`source-collapsible-body ${collapsed ? "collapsed" : "expanded"}`}>
           <div className="source-chip-list">
             {(sources ?? []).map(source => {
               const statusKey = (source?.status ?? "NOT_CONFIGURED").toLowerCase();
@@ -201,7 +229,7 @@ export default function SourceStatus({ showControls = true }: { showControls?: b
           <div className="source-selection-caption" aria-live="polite">
             {selectedSource ? `Selected: ${selectedSource.name}` : "No source selected"}
           </div>
-        </>
+        </div>
       )}
     </section>
   );
