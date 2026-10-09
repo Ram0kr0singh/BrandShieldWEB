@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, ChevronDown } from "lucide-react";
-import { api, sourceStatusWithMock, type SourceStatus as SourceStatusRecord } from "./api";
+import { api, type SourceStatus as SourceStatusRecord } from "./api";
 import "./source-status.css";
 
 type SourceKind = "SOCIAL" | "APP";
@@ -21,7 +21,7 @@ export function SourceStatusNotice({ kind }: { kind: SourceKind }) {
 
   useEffect(() => {
     let active = true;
-    sourceStatusWithMock().then(value => {
+    api.sourceStatus().then(value => {
       if (active) setSources(Array.isArray(value) ? value : []);
     }).catch(() => {
       if (active) setFailed(true);
@@ -54,7 +54,7 @@ export default function SourceStatus({ showControls = true }: { showControls?: b
     setSelectedId(null);
     setActionErrors({});
     try {
-      const response = await sourceStatusWithMock();
+      const response = await api.sourceStatus();
       setSources(Array.isArray(response) ? response : []);
       setFailed(false);
     } catch {

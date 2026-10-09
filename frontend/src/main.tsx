@@ -53,6 +53,8 @@ function timeAgo(dateStr: string): string {
 function OverviewPage(){
   const [brands,setBrands]=useState<Brand[]>([]),[id,setId]=useState(""),[data,setData]=useState<Overview|null>(null),[detections,setDetections]=useState<Detection[]>([]),[error,setError]=useState(""),[busy,setBusy]=useState(false),[scanWarnings,setScanWarnings]=useState<import("./api").SourceWarning[]>([]),nav=useNavigate();
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [allDetections, setAllDetections] = useState<Detection[]>([]);
+  const [detectionsLoaded, setDetectionsLoaded] = useState(false);
 
   /** Aggregate multiple overviews into a single combined Overview for "All Brands" mode */
   const aggregateOverviews = (ovs: Overview[]): Overview => {
@@ -102,10 +104,14 @@ function OverviewPage(){
         const validOvs = ovResults.filter((r): r is PromiseFulfilledResult<Overview> => r.status==="fulfilled").map(r => r.value);
         if(validOvs.length > 0) setData(aggregateOverviews(validOvs));
         setDetections(dets);
+        setAllDetections(dets);
+        setDetectionsLoaded(true);
       } else {
         const [ov, dets] = await Promise.all([api.overview(x), api.detections().catch(() => [])]);
         setData(ov);
         setDetections(dets.filter(d => !d.brand_id || d.brand_id === x));
+        setAllDetections(dets);
+        setDetectionsLoaded(true);
       }
     }catch{
       setError("Unable to load dashboard data.");
@@ -123,6 +129,32 @@ function OverviewPage(){
       setError("Unable to load protected brands.");
     }
   },[load]);
+
+  // Build a Set of brand_id values that appear in at least one detection
+  // NOTE: must be before any early returns (Rules of Hooks)
+  const brandsWithData = useMemo(() => {
+    if (!detectionsLoaded) return null;
+    const set = new Set<string>();
+    for (const d of allDetections) {
+      if (d.brand_id) set.add(d.brand_id);
+    }
+    return set;
+  }, [allDetections, detectionsLoaded]);
+
+  const filteredBrands = useMemo(() => {
+    if (!brandsWithData) return brands;
+    return brands.filter(b => brandsWithData.has(b.id));
+  }, [brands, brandsWithData]);
+
+  // If the currently selected brand id is not in brandsWithData, auto-select the first brand that is
+  useEffect(() => {
+    if (id && brandsWithData && !brandsWithData.has(id)) {
+      const firstValid = filteredBrands[0]?.id || "";
+      setId(firstValid);
+      setScanWarnings([]);
+      void load(firstValid);
+    }
+  }, [id, brandsWithData, filteredBrands, load]);
 
   useEffect(()=>{void init()},[init]);
   const scan=async()=>{
@@ -155,6 +187,7 @@ function OverviewPage(){
   };
   if(error)return <Loading>{error} <button type="button" onClick={()=> (id && brands.length ? load(id) : init())}>Retry</button></Loading>;
   if(!data)return <Loading>Loading dashboard...</Loading>;
+
 
   const isAllBrands = !id;
   const currentBrand = brands.find(b=>b.id===id);
@@ -201,7 +234,7 @@ function OverviewPage(){
         <label>Protected brand
           <select value={id} onChange={e=>{setId(e.target.value);setScanWarnings([]);load(e.target.value)}}>
             <option value="">All Brands</option>
-            {brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+            {filteredBrands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </label>
         <button type="button" className="primary" onClick={scan} disabled={busy}>
