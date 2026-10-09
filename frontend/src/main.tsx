@@ -172,11 +172,23 @@ function OverviewPage(){
             }
           }catch{}
         }
-        setScanWarnings(allWarnings);
+        const seen = new Set();
+        const unique = (allWarnings ?? []).filter(w => {
+          if (seen.has(w.id)) return false;
+          seen.add(w.id);
+          return true;
+        });
+        setScanWarnings(unique);
         await load("");
       } else {
         const result=await api.scan(id);
-        setScanWarnings(Array.isArray(result?.source_warnings)?result.source_warnings:[]);
+        const seen = new Set();
+        const unique = (result?.source_warnings ?? []).filter(w => {
+          if (seen.has(w.id)) return false;
+          seen.add(w.id);
+          return true;
+        });
+        setScanWarnings(unique);
         await load(id);
       }
     }catch{

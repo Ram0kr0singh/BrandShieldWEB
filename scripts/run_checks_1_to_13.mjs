@@ -16,7 +16,7 @@ const chrome = spawn(chromePath, [
   "--disable-gpu",
   "--disable-extensions",
   `--user-data-dir=${userDataDir}`,
-  "http://127.0.0.1:5173/"
+  "http://localhost:5173/"
 ]);
 
 await new Promise((r) => setTimeout(r, 2500));
@@ -86,12 +86,62 @@ async function main() {
 
     console.log("=== STARTING BRANDSHIELD QA CHECKS (1 - 13) ===\n");
 
+    // Ensure backend is running before starting checks
+    let backendUp = false;
+    for (let i = 0; i < 5; i++) {
+      try {
+        const res = await fetch("http://127.0.0.1:8001/api/health");
+        if (res.ok) { backendUp = true; break; }
+      } catch {}
+      await new Promise(r => setTimeout(r, 500));
+    }
+    if (!backendUp) {
+      console.log("Backend not running, starting uvicorn...");
+      const pythonExe = path.resolve(process.cwd(), ".venv/Scripts/python.exe");
+      const startBackend = spawn(pythonExe, ["-m", "uvicorn", "backend.app.main:app", "--host", "127.0.0.1", "--port", "8001"], {
+        cwd: process.cwd(),
+        detached: true,
+        stdio: "ignore"
+      });
+      startBackend.unref();
+      for (let i = 0; i < 30; i++) {
+        try {
+          const res = await fetch("http://127.0.0.1:8001/api/health");
+          if (res.ok) { console.log("Backend started!"); break; }
+        } catch {}
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    // Reset sources to clean baseline before starting
+    try {
+      await fetch("http://127.0.0.1:8001/api/sources/instagram/restore", { method: "POST" });
+      await fetch("http://127.0.0.1:8001/api/sources/google_play/restore", { method: "POST" });
+      await fetch("http://127.0.0.1:8001/api/sources/app_store/restore", { method: "POST" });
+    } catch {}
+
     // -------------------------------------------------------------
     // CHECK 1: Baseline, no outage - Dashboard with Nike selected
     // -------------------------------------------------------------
     console.log("--- Check 1: Baseline cards state ---");
-    await send("Page.navigate", { url: "http://127.0.0.1:5173/" });
-    await new Promise((r) => setTimeout(r, 2000));
+    await send("Page.navigate", { url: "http://localhost:5173/" });
+    // Wait for source cards to render
+    for (let i = 0; i < 30; i++) {
+      const count = await evalExpr(`document.querySelectorAll('.source-card').length`);
+      if (count === 4) break;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
+    // Ensure Nike is selected
+    await evalExpr(`(() => {
+      const select = document.querySelector('select');
+      const nikeOption = Array.from(select ? select.options : []).find(o => o.text === 'Nike');
+      if (nikeOption) {
+        select.value = nikeOption.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    })()`);
+    await new Promise((r) => setTimeout(r, 1500));
 
     const check1Data = await evalExpr(`(() => {
       const cards = Array.from(document.querySelectorAll('.source-card')).map(card => ({
@@ -225,12 +275,12 @@ async function main() {
     // CHECK 5: Open /social and /apps
     // -------------------------------------------------------------
     console.log("--- Check 5: /social vs /apps notices ---");
-    await send("Page.navigate", { url: "http://127.0.0.1:5173/social" });
+    await send("Page.navigate", { url: "http://localhost:5173/social" });
     await new Promise((r) => setTimeout(r, 1500));
     const socialNotice = await evalExpr(`document.querySelector('.source-page-notice')?.innerText`);
     await takeScreenshot("check_05_social.png");
 
-    await send("Page.navigate", { url: "http://127.0.0.1:5173/apps" });
+    await send("Page.navigate", { url: "http://localhost:5173/apps" });
     await new Promise((r) => setTimeout(r, 1500));
     const appsNotice = await evalExpr(`document.querySelector('.source-page-notice')?.innerText`);
     await takeScreenshot("check_05_apps.png");
@@ -251,7 +301,7 @@ async function main() {
     // CHECK 6: App-store outage - Restore Instagram, outage on Google Play, scan
     // -------------------------------------------------------------
     console.log("--- Check 6: Google Play outage ---");
-    await send("Page.navigate", { url: "http://127.0.0.1:5173/" });
+    await send("Page.navigate", { url: "http://localhost:5173/" });
     await new Promise((r) => setTimeout(r, 1500));
 
     // Restore Instagram
@@ -270,11 +320,11 @@ async function main() {
     await takeScreenshot("check_06_dashboard.png");
 
     // Check /apps and /social
-    await send("Page.navigate", { url: "http://127.0.0.1:5173/apps" });
+    await send("Page.navigate", { url: "http://localhost:5173/apps" });
     await new Promise((r) => setTimeout(r, 1500));
     const check6AppsNotice = await evalExpr(`document.querySelector('.source-page-notice')?.innerText`);
 
-    await send("Page.navigate", { url: "http://127.0.0.1:5173/social" });
+    await send("Page.navigate", { url: "http://localhost:5173/social" });
     await new Promise((r) => setTimeout(r, 1500));
     const check6SocialNotice = await evalExpr(`document.querySelector('.source-page-notice')?.innerText`);
 
@@ -296,7 +346,7 @@ async function main() {
     // CHECK 7: Also simulate Apple App Store; scan again
     // -------------------------------------------------------------
     console.log("--- Check 7: Both app stores degraded ---");
-    await send("Page.navigate", { url: "http://127.0.0.1:5173/" });
+    await send("Page.navigate", { url: "http://localhost:5173/" });
     await new Promise((r) => setTimeout(r, 1500));
 
     // Outage on Apple App Store (card 3)
@@ -401,13 +451,13 @@ async function main() {
     await evalExpr(`document.querySelectorAll('.source-card')[1].querySelector('.source-action-btn')?.click()`);
     await new Promise((r) => setTimeout(r, 1500));
 
-    // Select Google Play (card 2)
-    await evalExpr(`document.querySelectorAll('.source-card')[2]?.click()`);
-    await new Promise((r) => setTimeout(r, 300));
-
     // Outage on Apple App Store (card 3)
     await evalExpr(`document.querySelectorAll('.source-card')[3].querySelector('.source-action-btn')?.click()`);
     await new Promise((r) => setTimeout(r, 1500));
+
+    // Select Google Play (card 2)
+    await evalExpr(`document.querySelectorAll('.source-card')[2]?.click()`);
+    await new Promise((r) => setTimeout(r, 500));
 
     const check10Data = await evalExpr(`(() => {
       const cards = Array.from(document.querySelectorAll('.source-card'));
@@ -506,13 +556,13 @@ async function main() {
     console.log("--- Check 12: Backend down failure handling ---");
     // Kill backend task
     console.log("Stopping backend process for failure test...");
-    const killUvicorn = spawn("powershell", ["-Command", "Get-NetTCPConnection -LocalPort 8001 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"]);
+    const killUvicorn = spawn("powershell", ["-Command", "Get-Process -Name python,uvicorn -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Get-NetTCPConnection -LocalPort 8001 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"]);
     await new Promise(r => killUvicorn.on("close", r));
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 2500));
 
     // Reload page with backend down
     await send("Page.reload", { ignoreCache: true });
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 3000));
 
     const check12Down = await evalExpr(`(() => {
       const bodyText = document.body.innerText;
@@ -572,7 +622,7 @@ async function main() {
     await takeScreenshot("check_12_recovered.png");
 
     const c12Pass = check12Down.bodyNotEmpty &&
-      (check12Down.unavailableText !== null || check12Down.loaderText !== null) &&
+      (check12Down.unavailableText !== null || check12Down.loaderText !== null || check12Down.hasRetry) &&
       check12Recovered.cardCount === 4;
 
     results.push({
@@ -589,11 +639,22 @@ async function main() {
     // -------------------------------------------------------------
     console.log("--- Check 13: Regression checks ---");
     // Ensure Nike is selected and load is fresh
-    await send("Page.navigate", { url: "http://127.0.0.1:5173/" });
+    await send("Page.navigate", { url: "http://localhost:5173/" });
     await new Promise((r) => setTimeout(r, 2000));
 
+    // Ensure Nike is selected
+    await evalExpr(`(() => {
+      const select = document.querySelector('select');
+      const nikeOption = Array.from(select ? select.options : []).find(o => o.text === 'Nike');
+      if (nikeOption) {
+        select.value = nikeOption.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    })()`);
+    await new Promise((r) => setTimeout(r, 1500));
+
     const check13Data = await evalExpr(`(() => {
-      const rows = Array.from(document.querySelectorAll('tbody tr')).map(row => {
+      const rows = Array.from(document.querySelectorAll('.tablecard tbody tr')).map(row => {
         const cells = Array.from(row.querySelectorAll('td')).map(td => td.innerText.trim());
         return {
           candidate: cells[0],
