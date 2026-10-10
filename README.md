@@ -1,189 +1,90 @@
 # BrandShield
 
-**Digital Risk Protection for Modern Brands**
+**Digital Risk Protection — detect brand impersonation, fake apps, and look-alike social accounts before they cause damage.**
 
-BrandShield is a brand protection and threat monitoring platform that helps organizations detect impersonation, look-alike accounts, fake mobile apps, suspicious publishers, and brand abuse patterns before they escalate into customer harm. Built as a polished hackathon-ready prototype, the project combines a React frontend, a FastAPI backend, and an evidence-driven detection engine to present clear, explainable monitoring workflows for brand teams.
+A full-stack DRP platform built for the Kampus.VC hackathon. BrandShield maps a brand's digital perimeter, runs deterministic detection across domains, social handles, and app store listings, and surfaces an analyst-ready investigation workflow — all backed by a persistent PostgreSQL evidence store.
 
-The system is designed to feel like a real-world threat intelligence dashboard: protected brands, signal checks, synthetic monitoring feeds, persisted detections, investigation records, and remediation draft generation, all in one place.
-
-> BrandShield is intentionally built as a deterministic demo platform using controlled synthetic data and local evidence. It showcases the end-to-end workflow of digital brand protection without relying on live scraping or external production monitoring.
-
----
-
-## Table of Contents
-
-- [Why This Exists](#why-this-exists)
-- [Hackathon Evaluation Criteria](#hackathon-evaluation-criteria)
-- [Screenshots](#screenshots)
-- [Architecture](#architecture)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Local Development Workflow](#local-development-workflow)
-- [Deployment Guide](#deployment-guide)
-- [API Overview](#api-overview)
-- [Evaluation Checklist](#evaluation-checklist)
-- [Limitations](#limitations)
-- [Future Roadmap](#future-roadmap)
-- [Acknowledgments](#acknowledgments)
-
----
-
-## Why This Exists
-
-Modern brands face rising risk from:
-
-- impersonation accounts and typo-squatted social profiles
-- fake apps with misleading branding or suspicious publishers
-- look-alike domains and app names that confuse customers
-- promotional scam pages that appear official but are not
-
-Most solutions stop at simple monitoring or static brand registration. BrandShield goes a step further by creating a structured workflow that combines:
-
-- protected brand identity baseline
-- candidate discovery from unknown social or app sources
-- signal-based comparison with official assets
-- persisted evidence and risk scoring
-- investigation and remediation drafting
-- explainable risk reasoning for analysts and stakeholders
-
-This turns brand monitoring from a passive checklist into an operational workflow that resembles a real digital risk protection tool.
-
----
-
-## Hackathon Evaluation Criteria
-
-The challenge emphasizes both automated and human evaluation.
-
-### Automated Evaluation
-
-The platform will be evaluated on required features and must work end-to-end without manual workaround. The key requirement is to make sure all mandatory functionalities from the challenge are implemented and functioning correctly.
-
-### Human Evaluation
-
-Judges will assess:
-
-- problem understanding
-- functionality
-- technical execution
-- innovation & creativity
-- user experience
-- overall solution quality
-- deployment readiness
-- scalability and potential
-
-BrandShield is built to satisfy this rubric by delivering a complete, visually polished, real-world simulation that looks production-aware while remaining easy to understand and demo.
+> Live demo → **[https://brandshieldweb.onrender.com](https://brandshieldweb.onrender.com)**  
+> API docs → **[https://brandshield-api.onrender.com/docs](https://brandshield-api.onrender.com/docs)**
 
 ---
 
 ## Screenshots
 
-The project includes a set of polished dashboard and product views for product storytelling and GitHub presentation.
+> Run the app locally and capture these pages, then save the images into `docs/screenshots/` using the exact filenames below — they will render automatically once added.
 
 | Page | Screenshot |
 |---|---|
-| Dashboard Overview | ![Dashboard Overview](screenshots/aegis_01_dashboard.png) |
-| Brand Profile | ![Brand Profile](screenshots/aegis_02_profile.png) |
-| Social Media Monitoring | ![Social Monitoring](screenshots/aegis_03_social.png) |
-| App Store Monitoring | ![App Monitoring](screenshots/aegis_04_apps.png) |
-| Threat Investigation | ![Threats](screenshots/aegis_05_threats.png) |
-| Detail View | ![Threat Detail](screenshots/aegis_06_detail.png) |
-| Look-alike Detection | ![Look-alikes](screenshots/aegis_07_lookalikes.png) |
-| Name Checker | ![Name Checker](screenshots/aegis_08_check.png) |
-
-> These visuals are designed to communicate the product story clearly and are ideal for hackathon submissions, pitch decks, and GitHub presentation pages.
+| Overview — threat summary dashboard | ![Overview](docs/screenshots/overview-dark.png) |
+| Brand Profile — edit and logo upload | ![Brand Profile](docs/screenshots/brand-profile-dark.png) |
+| Social Media — impersonation scan | ![Social Media](docs/screenshots/social-media-dark.png) |
+| App Stores — fake app detections | ![App Stores](docs/screenshots/app-stores-dark.png) |
+| Threats — investigation queue | ![Threats](docs/screenshots/threats-dark.png) |
+| Look-alike Detector — perimeter visualisation | ![Look-alike](docs/screenshots/lookalike-dark.png) |
+| Check Any Name — on-demand name analysis | ![Check Name](docs/screenshots/check-name-dark.png) |
 
 ---
 
 ## Architecture
 
-BrandShield follows a layered architecture that separates data, detection logic, and presentation while keeping the system easy to run locally and demo in a live environment.
+Two layers: a FastAPI backend that owns detection logic and the evidence store, and a React frontend that renders exactly what the API returns.
 
 ```mermaid
 flowchart TD
-    A[Protected brand profile] --> B[Frontend Dashboard]
-    B --> C[FastAPI Backend]
-    C --> D[(PostgreSQL Database)]
-    C --> E[Detection Engine]
-    E --> F[Name similarity analysis]
-    E --> G[Publisher mismatch logic]
-    E --> H[Look-alike / visual similarity checks]
-    E --> I[Evidence persistence]
-    I --> J[Threat investigation workflows]
-    J --> K[Draft remediation recommendations]
-    C --> L[AI Analyst Layer]
-    L --> M[Explainable evidence summary]
+    A[Brand Profile] --> B[Detection Engine]
+
+    B --> C[Domain / Name Analysis\nnormalization · similarity · signal scoring]
+    B --> D[Social Media Scan\nhandle matching · follower signals]
+    B --> E[App Store Scan\nbundle ID · publisher · rating signals]
+
+    C --> F[(PostgreSQL\nEvidence Store)]
+    D --> F
+    E --> F
+
+    F --> G[Dashboard API\n/api/dashboard]
+    F --> H[Investigations API\n/api/investigations]
+
+    G --> I[React Frontend\nbrandshieldweb.onrender.com]
+    H --> I
+
+    I --> J[Overview]
+    I --> K[Threats Queue]
+    I --> L[Investigation Detail]
 ```
 
-### System flow
+Detection is deterministic and offline — no live scraping, no external crawlers. All results come from the stored evidence seeded on startup.
 
-1. A protected brand is defined with official domain, logo, social handles, and app metadata.
-2. The system loads candidate social and app observations as potential impersonation threats.
-3. A deterministic detection engine evaluates candidate signals such as:
-   - name matching and typo transformations
-   - logo similarity
-   - publisher mismatch
-   - description overlap
-   - platform trust signals
-4. Evidence is persisted in PostgreSQL for auditability.
-5. The dashboard surfaces risk, severity, and investigation status.
-6. A remediation draft can be generated without triggering real-world actions.
+> **"Live collectors are planned, not implemented. Analysis uses stored observations only."**
 
-### Runtime stack
-
-```text
-React + TypeScript (Vite) → FastAPI → PostgreSQL
-          ↓                      ↓
-      Vite frontend         SQLAlchemy + Alembic
-      http://localhost:5173  http://localhost:8000
+```mermaid
+flowchart LR
+    Input[Name / Handle / Bundle ID] --> Norm[Normalisation\nlowercase · strip accents · remove separators]
+    Norm --> Sig[Signal Scoring\nlevenshtein · phonetic · visual · keyword]
+    Sig --> Risk[Risk Classification\nCRITICAL · HIGH · MEDIUM · LOW]
+    Risk --> DB[(Persisted Detection Result)]
 ```
 
 ---
 
 ## Features
 
-### Brand identity management
+**Overview Dashboard** — brand-level threat summary: total detections by severity, monitoring status, and a live-updating metrics bar.
 
-- register and manage protected brands
-- store official domains and brand assets
-- maintain official social handles and app references
-- support profile editing and brand metadata updates
+**Brand Profile** — edit brand name, industry, keywords, official handles, and upload a reference logo. Profile edits trigger a re-scan.
 
-### Threat monitoring dashboard
+**Social Media Detections** — ranked list of look-alike handles across platforms with signal breakdown (name similarity, follower ratio, post patterns).
 
-- overview metrics for detected risk and severity distribution
-- threat prioritization across social and app channels
-- scan results with chart summaries and risk breakdowns
-- source status monitoring for operational health
+**App Store Detections** — suspicious app listings matched against the brand's known bundle IDs, publisher names, and keyword set.
 
-### Detection engine
+**Threats Queue** — analyst-facing investigation workflow: triage, status transitions (open → investigating → resolved / dismissed), and AI-drafted remediation notes.
 
-- deterministic similarity analysis for brand names
-- transformation detection, including character substitution and spacing variants
-- evidence-based detection scoring
-- severity classification (SAFE, LOW, MEDIUM, HIGH, CRITICAL)
-- persisted evidence trail per finding
+**Look-alike Detector** — perimeter visualisation showing the brand's official digital footprint alongside flagged candidates, with distance scores rendered as a proximity map.
 
-### Investigation experience
+**Check Any Name** — on-demand analysis: type any domain, handle, or app name and get an instant similarity report against the active brand.
 
-- candidate-level inspection for suspicious entities
-- investigation notes and status updates
-- activity timeline for each detection
-- remediation draft generation (draft-only, no external takedown action)
+**Auto-seed on Startup** — the backend seeds five demo brands (Nike, Apple, Samsung, Spotify, Adidas) with pre-computed detections on every cold start. Idempotent — safe to restart.
 
-### Explainable analyst layer
-
-- AI-generated summaries grounded in evidence
-- risk rationales tied to actual detection facts
-- uncertainties and recommended follow-up actions
-
-### Demo-safe design
-
-- synthetic local data only
-- no live scraping
-- no live takedown automation
-- no production credential exposure to the browser
+> **"Similarity alone is not proof of maliciousness."** Every detection score is a signal, not a verdict. Investigation and human judgement close the loop.
 
 ---
 
@@ -191,340 +92,232 @@ React + TypeScript (Vite) → FastAPI → PostgreSQL
 
 | Layer | Technology |
 |---|---|
-| Frontend | React, TypeScript, Vite, Recharts, Lucide React |
-| Backend | FastAPI, SQLAlchemy, Pydantic |
-| Database | PostgreSQL via Docker Compose |
+| Language | Python 3.13 |
+| API | FastAPI + Uvicorn |
+| ORM | SQLAlchemy 2.0 |
 | Migrations | Alembic |
-| Runtime | Python 3.13, Node.js 24 LTS |
-| File handling | Pillow for logo validation and processing |
-| Optional AI Analyst | Groq-compatible OpenAI-style API |
-| Testing | pytest |
-| Dev environment | Docker Desktop, Python venv |
+| DB driver | psycopg3 (psycopg[binary]) |
+| Config | pydantic-settings |
+| Image processing | Pillow |
+| HTTP client | httpx |
+| Database | PostgreSQL (Docker Compose locally, Supabase in prod) |
+| Frontend | React + TypeScript |
+| Build tool | Vite |
+| Charts | Recharts |
+| Icons | Lucide React |
+| Styling | Tailwind CSS |
+| Fonts | Inter · Instrument Serif · JetBrains Mono |
+| Optional AI analyst | Groq-compatible OpenAI-style API (graceful fallback when no key) |
+| Hosting | Render (Web Service + Static Site) |
+| Node | 24 LTS |
 
 ---
 
 ## Project Structure
 
-```text
+```
 .
 ├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── core/
-│   │   ├── database/
-│   │   ├── detection/
-│   │   ├── analyst.py
-│   │   ├── logos.py
-│   │   ├── main.py
-│   │   ├── models.py
-│   │   ├── schemas.py
-│   │   ├── seed.py
-│   │   └── sources.py
+│   ├── pyproject.toml
+│   ├── alembic.ini
 │   ├── alembic/
-│   ├── tests/
-│   ├── .pytest_cache/
-│   └── pyproject.toml
+│   │   └── versions/              # 5 migrations: domain tables → investigations
+│   └── app/
+│       ├── main.py                # FastAPI app + lifespan auto-seed
+│       ├── models.py              # SQLAlchemy models
+│       ├── schemas.py             # Pydantic request/response schemas
+│       ├── seed.py                # Idempotent demo-data seeder
+│       ├── sources.py             # Source-status router
+│       ├── analyst.py             # LLM-backed remediation draft (optional)
+│       ├── logos.py               # Logo upload + static serving
+│       ├── api/
+│       │   ├── brands.py          # Brand CRUD + re-scan trigger
+│       │   ├── dashboard.py       # Aggregated metrics endpoint
+│       │   ├── detections.py      # Detection read + filter endpoints
+│       │   ├── health.py          # GET /api/health
+│       │   ├── investigations.py  # Investigation workflow endpoints
+│       │   ├── monitoring.py      # Monitoring run endpoints
+│       │   └── sources.py         # Source status re-export
+│       ├── core/
+│       │   └── config.py          # Pydantic settings (DATABASE_URL, CORS_ORIGINS, …)
+│       ├── database/
+│       │   ├── base.py            # Declarative base
+│       │   └── session.py         # Engine + SessionLocal + get_db
+│       ├── detection/
+│       │   ├── engine.py          # Orchestrates a full brand scan
+│       │   ├── normalization.py   # Text normalisation helpers
+│       │   └── signals.py         # Similarity signal scorers
+│       └── tests/                 # pytest suite (health, detection, investigations, …)
 ├── frontend/
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   ├── tsconfig.app.json
+│   ├── index.html
 │   ├── vite.config.ts
-│   └── index.html
-├── data/
-│   └── logos/
+│   └── src/
+│       ├── main.tsx               # App root + router
+│       ├── api.ts                 # Typed fetch wrappers for every endpoint
+│       ├── AppSidebar.tsx         # Seven-section nav (01–07)
+│       ├── BrandLogo.tsx          # Logo display + upload
+│       ├── BrandProfileEditor.tsx # Inline profile editing
+│       ├── CheckName.tsx          # On-demand name analysis UI
+│       ├── PerimeterVisualization.tsx  # Look-alike proximity map
+│       └── SourceStatus.tsx       # Collector status panel
 ├── docs/
-│   ├── aegis/
-│   └── FRONTEND_MANUAL_CHECKS.md
-├── screenshots/
-│   ├── aegis_01_dashboard.png
-│   ├── aegis_02_profile.png
-│   ├── aegis_03_social.png
-│   ├── aegis_04_apps.png
-│   ├── aegis_05_threats.png
-│   ├── aegis_06_detail.png
-│   ├── aegis_07_lookalikes.png
-│   └── aegis_08_check.png
-├── docker-compose.yml
+│   └── screenshots/               # ← paste your screenshots here (see table above)
+├── data/                          # Logo storage (gitkeep)
+├── docker-compose.yml             # Local Postgres + backend
 ├── .env.example
-├── README.md
-├── postman/
-├── scripts/
-└── .gitignore
+└── scripts/                       # QA and browser-automation helpers
 ```
 
 ---
 
 ## Getting Started
 
-### Prerequisites
+**Prerequisites:** Docker Desktop, Python 3.13+, Node 18+.
 
-Before running the project, install the following:
+```bash
+# 1. Clone
+git clone https://github.com/Ram0kr0singh/BrandShieldWEB.git
+cd BrandShieldWEB
 
-- Node.js 24 LTS and npm
-- Docker Desktop with Docker Compose enabled
-- Python 3.13 installed and available via `py` on Windows
+# 2. Start PostgreSQL
+docker compose up -d db
 
-> Use the repo-local Python virtual environment instead of a global Python installation. The backend is configured to run from the project `.venv` and not from a separate machine-wide setup.
+# 3. Backend
+cd backend
+pip install -e ".[dev]"
+cp ../.env.example ../.env
+# edit .env — at minimum set DATABASE_URL (see table below)
+alembic upgrade head
+uvicorn app.main:app --reload
+# → http://localhost:8000/docs
 
-### Environment setup
-
-1. Copy `.env.example` to `.env`.
-2. Set a secure local PostgreSQL password.
-3. Ensure `DATABASE_URL` matches your local database password.
-4. Keep the frontend base URL aligned with the backend port:
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8001
+# 4. Frontend (new terminal)
+cd frontend
+npm install
+npm run dev
+# → http://localhost:5173
 ```
 
-> The app is configured for the backend on port `8001` from the frontend side. If your deployment or local setup differs, update this value and rebuild the frontend.
+**Environment variables (`.env` at repo root):**
 
-### Optional AI analyst configuration
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `CORS_ORIGINS` | No | Comma-separated allowed origins (default: `http://localhost:5173`) |
+| `LLM_API_KEY` | No | Groq / OpenAI key for AI-drafted remediation notes — app works without it |
+| `LLM_MODEL` | No | Model identifier (default: `openai/gpt-oss-120b`) |
+| `LLM_BASE_URL` | No | Custom OpenAI-compatible endpoint (default: Groq) |
+| `LLM_TIMEOUT_SECONDS` | No | LLM call timeout (default: `20.0`) |
 
-Set the following if you want the backend analyst to call a Groq-compatible API:
-
-```env
-LLM_API_KEY=your_key_here
-LLM_MODEL=openai/gpt-oss-120b
-LLM_BASE_URL=https://api.groq.com/openai/v1
-```
-
-If no key is configured, the backend gracefully falls back to deterministic explanatory output instead of failing.
+The backend seeds five demo brands automatically on first startup — no manual data import needed.
 
 ---
 
-## Local Development Workflow
+## API Reference
 
-### 1) Create the virtual environment
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/brands` | List all monitored brands |
+| `POST` | `/api/brands` | Create a brand |
+| `GET` | `/api/brands/{id}` | Get brand detail |
+| `PATCH` | `/api/brands/{id}` | Update brand profile |
+| `GET` | `/api/detections` | List detections (filterable by brand, severity, type) |
+| `GET` | `/api/dashboard` | Aggregated threat metrics per brand |
+| `GET` | `/api/investigations` | List investigations |
+| `POST` | `/api/investigations` | Open a new investigation |
+| `PATCH` | `/api/investigations/{id}` | Update status / add notes |
+| `GET` | `/api/monitoring` | List monitoring runs |
+| `POST` | `/api/monitoring` | Trigger a monitoring run |
+| `GET` | `/api/sources` | Source collector status |
 
-```powershell
-py -3.13 -m venv .venv
-.venv\Scripts\activate
-python --version
-```
+Full request/response schemas at `/docs` (Swagger UI) once the app is running.
 
-### 2) Install backend dependencies
-
-```powershell
-python -m pip install -e ".\backend[dev]"
-```
-
-### 3) Install frontend dependencies
-
-```powershell
-npm install --prefix frontend
-```
-
-### 4) Start PostgreSQL with Docker
-
-```powershell
-docker compose up -d postgres
-docker compose ps
-```
-
-### 5) Run database migrations
-
-```powershell
-cd backend
-..\.venv\Scripts\python.exe -m alembic upgrade head
-```
-
-### 6) Seed demo data
-
-```powershell
-cd backend
-..\.venv\Scripts\python.exe -m app.seed
-```
-
-This loads controlled, clearly synthetic demo data for Nike, Apple, Samsung, Spotify, and Adidas.
-
-### 7) Start the backend API
-
-```powershell
-cd backend
-..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
-```
-
-### 8) Start the frontend
-
-```powershell
-npm run dev --prefix frontend
-```
-
-### 9) Open the app
-
-Visit:
-
-```text
-http://localhost:5173
-```
-
-The frontend is expected to communicate with the backend at:
-
-```text
-http://localhost:8000
-```
-
-A healthy backend will respond on the `/api/health` endpoint with database status information.
-
-### 10) Run tests
-
-```powershell
-cd backend
-..\.venv\Scripts\python.exe -m pytest
-```
-
-### 11) Create a production frontend build
-
-```powershell
-npm run build --prefix frontend
+**Example — GET /api/dashboard (Nike):**
+```json
+{
+  "brand_id": 1,
+  "brand_name": "Nike",
+  "total_detections": 5,
+  "by_severity": { "CRITICAL": 1, "HIGH": 2, "MEDIUM": 2, "LOW": 0 },
+  "monitoring_active": true
+}
 ```
 
 ---
 
-## Deployment Guide
+## Deployment (Render + Supabase)
 
-The project is designed to be deployment-friendly for modern hosting.
+The live demo runs on Render free tier with a Supabase PostgreSQL database.
 
-### Recommended deployment pattern
+| Service | Platform | URL |
+|---|---|---|
+| Backend (Web Service) | Render | `https://brandshield-api.onrender.com` |
+| Frontend (Static Site) | Render | `https://brandshieldweb.onrender.com` |
+| Database | Supabase | Session pooler (IPv4, port 5432) |
 
-- Frontend: Vercel
-- Backend: Render or any Python hosting provider
-- Database: PostgreSQL service (local Docker in development, hosted Postgres in deployment)
+**Key deployment settings:**
 
-### Environment variables for deployment
+| Setting | Value |
+|---|---|
+| Root Directory (backend) | `backend` |
+| Build Command (backend) | `pip install -e .` |
+| Start Command (backend) | `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Python Version | `3.13.1` |
+| Root Directory (frontend) | `frontend` |
+| Build Command (frontend) | `npm install && npm run build` |
+| Publish Directory | `dist` |
+| Rewrite Rule | `/* → /index.html` (required for SPA routing) |
 
-Set the backend environment values on the deployment platform:
+**Backend environment variables on Render:**
 
-```env
-DATABASE_URL=postgresql+psycopg://user:password@host:5432/dbname
-CORS_ORIGINS=https://your-frontend-domain.vercel.app
-LLM_API_KEY=optional-key
-LLM_MODEL=openai/gpt-oss-120b
-LLM_BASE_URL=https://api.groq.com/openai/v1
-```
+| Key | Value |
+|---|---|
+| `DATABASE_URL` | Supabase Session Pooler URL (not Direct — Render free tier is IPv4 only) |
+| `CORS_ORIGINS` | `http://localhost:5173,https://brandshieldweb.onrender.com` |
+| `PYTHON_VERSION` | `3.13.1` |
 
-Set the frontend environment variable for the deployed API URL:
-
-```env
-VITE_API_BASE_URL=https://your-backend-url.onrender.com
-```
-
-> A common deployment issue is mismatched frontend and backend ports. In this project, the frontend is expected to target the backend API endpoint through `VITE_API_BASE_URL`; if your API is hosted elsewhere, update that variable accordingly.
-
----
-
-## API Overview
-
-The application exposes a structured set of endpoints for brand, detection, monitoring, and investigation workflows.
-
-### Brand APIs
-
-- `GET /api/brands`
-- `POST /api/brands`
-- `GET /api/brands/{id}`
-- `PATCH /api/brands/{id}`
-- `POST /api/brands/{id}/logo`
-- `GET /api/brands/{id}/social-accounts`
-- `POST /api/brands/{id}/social-accounts`
-- `GET /api/brands/{id}/apps`
-- `POST /api/brands/{id}/apps`
-- `GET /api/brands/{id}/assets`
-- `POST /api/brands/{id}/assets`
-
-### Detection APIs
-
-- `POST /api/analyze/name`
-- `POST /api/analyze/social/{candidate_id}`
-- `POST /api/analyze/app/{candidate_id}`
-- `POST /api/detections/scan`
-- `GET /api/detections`
-- `GET /api/detections/{id}`
-- `POST /api/detections/{id}/analyze`
-
-### Dashboard & monitoring APIs
-
-- `GET /api/dashboard/overview`
-- `GET /api/sources/status`
-- `POST /api/monitoring/scan`
-
-### Investigation APIs
-
-- status updates
-- note creation
-- remediation draft generation
-- investigation timeline retrieval
+> **Note:** Use the Supabase **Session Pooler** connection string (port 5432, hostname `*.pooler.supabase.com`), not the Direct connection. The Direct connection uses IPv6 which is unreachable from Render's free tier.
 
 ---
 
-## Evaluation Checklist
+## Testing
 
-BrandShield is aligned with the challenge’s evaluation rubric and is designed to present a strong, complete digital product experience.
+```bash
+cd backend
+# Fast unit tests
+python -m pytest -m "not integration"
 
-### Automated evaluation readiness
+# Full suite
+python -m pytest
+```
 
-- functional backend routes
-- database-backed persistence
-- frontend-backend integration
-- deterministic demo data without broken dependencies
-- risk detection pipeline and status tracking
+Tests cover: health endpoint, brand CRUD, detection engine (name normalisation, similarity signals, risk classification), domain checks, logo similarity, investigation workflow, and monitoring dashboard aggregation.
 
-### Human evaluation readiness
+---
 
-- clear product concept and problem framing
-- visual polish and professional dashboard design
-- explainable threat intelligence workflow
-- realistic investigation UX
-- strong project presentation for GitHub and demo use
+## Security Notes
+
+- API keys (`LLM_API_KEY`) are read from environment variables only — never logged, stored in the database, or committed to the repo.
+- Detection risk scores are computed server-side and returned as-is to the frontend. The frontend never recomputes risk, severity, threat type, or counts.
+- The optional LLM analyst generates draft remediation text only — it cannot trigger any action or modify stored detections.
+
+> **"Similarity alone is not proof of maliciousness."**
 
 ---
 
 ## Limitations
 
-This is a demo-grade platform and not a production-grade brand monitoring service.
+- Detection is offline and deterministic — there is no live crawling of social media, app stores, or domain registries.
+- Logo similarity uses perceptual hashing (pHash) against the uploaded reference logo only; no web image fetching.
+- The AI analyst (remediation drafts) is an optional feature gated behind `LLM_API_KEY`; all core DRP functionality works without it.
+- Evaluated on seeded synthetic data only; no real-world brand abuse dataset was used for the hackathon submission.
 
-- uses controlled synthetic data, not live market monitoring
-- no live scraping of social networks or app stores
-- no automated takedown systems or legal enforcement workflows
-- no authentication or user-role authorization layer
-- AI analyst output is explanatory and optional
-
-These are intentional trade-offs to keep the project focused, deterministic, and suitable for a hackathon environment.
-
----
-
-## Future Roadmap
-
-Potential next steps:
-
-- real-time monitoring integrations
-- broader branded asset discovery and domain intelligence
-- threat prioritization with active scoring pipelines
-- role-based analyst workspace
-- exportable investigation reports
-- live dashboard for multiple brands and teams
-- real-world connector integrations for social and app ecosystems
+> **"Live collectors are planned, not implemented. Analysis uses stored observations only."**
 
 ---
 
 ## Acknowledgments
 
-This project was developed as a polished end-to-end digital risk protection prototype to demonstrate the value of threat monitoring, evidence-based risk classification, and operational brand defense workflows.
-
-It is designed especially for hackathon presentations, GitHub showcases, and product-storytelling environments where a real-world user journey matters as much as the technical implementation.
-
----
-
-## Final Note
-
-BrandShield is not just a UI mockup or a static prototype. It represents a complete workflow for identifying suspicious digital threats around a brand, organizing findings, proving them with evidence, and helping teams act with clarity.
-
-Whether used as a hackathon submission, a product demo, or a foundation for a larger digital risk protection platform, the project is built to look credible, explainable, and professional.
-
-If you want, I can also craft a second version of this README tuned specifically for:
-
-- GitHub aesthetic / project landing page style
-- hackathon submission version with a shorter executive summary
-- investor pitch / product showcase version
-- deployment-focused README with Vercel + Render setup steps
+- Hackathon: [Kampus.VC](https://kampus.vc) Digital Risk Protection challenge.
+- MCA (AI & DS), K.R. Mangalam University, School of Engineering & Technology.
