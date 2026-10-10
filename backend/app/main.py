@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import health, brands, detections, monitoring, dashboard, investigations, sources
-from app.config import get_settings
+from app.core.config import get_settings
 from app.logos import ensure_logo_directory
 
 
@@ -13,7 +13,7 @@ from app.logos import ensure_logo_directory
 async def lifespan(app: FastAPI):
     # Auto-seed on startup — idempotent, safe to run every time
     try:
-        from app.database import SessionLocal
+        from app.database.session import SessionLocal
         from app.seed import seed_demo_data
         db = SessionLocal()
         seed_demo_data(db)
