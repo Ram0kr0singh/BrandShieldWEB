@@ -9,6 +9,20 @@ A full-stack DRP platform built for the Kampus.VC hackathon. BrandShield maps a 
 
 ---
 
+## Quick Links
+
+- [Live Demo](https://brandshieldweb.onrender.com)
+- [API Docs](https://brandshield-api.onrender.com/docs)
+- [Screenshots](#screenshots)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [API Reference](#api-reference)
+- [Deployment](#deployment-render--supabase)
+- [Team](#team)
+
+---
+
 ## Screenshots
 
 > Run the app locally and capture these pages, then save the images into `docs/screenshots/` using the exact filenames below — they will render automatically once added.
@@ -317,7 +331,16 @@ Tests cover: health endpoint, brand CRUD, detection engine (name normalisation, 
 
 ---
 
+## Team
+
+| Role | Contributor |
+|---|---|
+| Backend — FastAPI, PostgreSQL, detection engine, Alembic migrations, deployment | [Ram Kumar Singh](https://github.com/Ram0kr0singh) |
+| Frontend & Design — React, TypeScript, Tailwind CSS, UI/UX | [Harsh Singh](https://github.com/Harsh0012-ux) |
+
+---
+
 ## Acknowledgments
 
-- Hackathon: [Kampus.VC](https://kampus.vc) Digital Risk Protection challenge.
+- Hackathon: ByteXL 24 Hours [Kampus.VC](https://kampus.vc) Digital Risk Protection challenge.
 - MCA (AI & DS), K.R. Mangalam University, School of Engineering & Technology.
