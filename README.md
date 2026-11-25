@@ -337,6 +337,7 @@ Tests cover: health endpoint, brand CRUD, detection engine (name normalisation, 
 |---|---|
 | Backend — FastAPI, PostgreSQL, detection engine, Alembic migrations, deployment | [Ram Kumar Singh](https://github.com/Ram0kr0singh) |
 | Frontend & Design — React, TypeScript, Tailwind CSS, UI/UX | [Harsh Singh](https://github.com/Harsh0012-ux) |
+| UI & Design — UI/UX, Canva | [Tanya Ghatia](https://github.com/bhatiatanya81-code) |
 
 ---
 
